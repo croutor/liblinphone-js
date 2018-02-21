@@ -1,6 +1,6 @@
 # Source, Executable, Includes, Library Defines
-INCL   = call.h
-SRC    = call.c
+INCL   = notifications.h
+SRC    = linphone.c notifications.c
 OBJ    = $(SRC:.c=.o)
 LIBS   = -llinphone -lmediastreamer_base
 EXE    = linphonecallsample
