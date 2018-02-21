@@ -18,6 +18,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include <signal.h>
 
 #include "notifications.h"
+#include "registration.h"
 
 static bool_t running=TRUE;
 static void stop(int signum){
