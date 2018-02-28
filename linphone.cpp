@@ -12,7 +12,7 @@ Napi::Object Linphone::Init(Napi::Env env, Napi::Object exports) {
   });
 
   constructor = Napi::Persistent(func);
-  constructor.SuppressDestruct();
+  //constructor.SuppressDestruct();
 
   exports.Set("Linphone", func);
   return exports;
@@ -46,6 +46,10 @@ Linphone::Linphone(const Napi::CallbackInfo& info) : Napi::ObjectWrap<Linphone>(
    Instanciate a LinphoneCore object given the LinphoneCoreVTable
   */
   this->lc_=linphone_core_new(&this->vtable_,config.c_str(),NULL,NULL);
+}
+
+Linphone::~Linphone() {
+  linphone_core_destroy(this->lc_);
 }
 
 Napi::Value Linphone::GetValue(const Napi::CallbackInfo& info) {

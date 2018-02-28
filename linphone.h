@@ -9,6 +9,7 @@ class Linphone : public Napi::ObjectWrap<Linphone> {
  public:
   static Napi::Object Init(Napi::Env env, Napi::Object exports);
   Linphone(const Napi::CallbackInfo& info);
+  ~Linphone();
 
  private:
   static Napi::FunctionReference constructor;
