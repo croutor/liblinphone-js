@@ -14,6 +14,7 @@ class Linphone : public Napi::ObjectWrap<Linphone> {
  private:
   static Napi::FunctionReference constructor;
 
+  void EnableLog(const Napi::CallbackInfo& info);
   Napi::Value GetValue(const Napi::CallbackInfo& info);
   Napi::Value PlusOne(const Napi::CallbackInfo& info);
   Napi::Value Multiply(const Napi::CallbackInfo& info);

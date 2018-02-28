@@ -6,6 +6,7 @@ Napi::Object Linphone::Init(Napi::Env env, Napi::Object exports) {
   Napi::HandleScope scope(env);
 
   Napi::Function func = DefineClass(env, "Linphone", {
+    InstanceMethod("enablelog", &Linphone::EnableLog),
     InstanceMethod("plusOne", &Linphone::PlusOne),
     InstanceMethod("value", &Linphone::GetValue),
     InstanceMethod("multiply", &Linphone::Multiply)
@@ -50,6 +51,10 @@ Linphone::Linphone(const Napi::CallbackInfo& info) : Napi::ObjectWrap<Linphone>(
 
 Linphone::~Linphone() {
   linphone_core_destroy(this->lc_);
+}
+
+void Linphone::EnableLog(const Napi::CallbackInfo& info) {
+  linphone_core_enable_logs(NULL);
 }
 
 Napi::Value Linphone::GetValue(const Napi::CallbackInfo& info) {
