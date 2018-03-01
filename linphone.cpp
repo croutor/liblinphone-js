@@ -13,23 +13,39 @@ Napi::Object Linphone::Init(Napi::Env env, Napi::Object exports) {
   });
 
   constructor = Napi::Persistent(func);
-  //constructor.SuppressDestruct();
+  constructor.SuppressDestruct();
 
   exports.Set("Linphone", func);
   return exports;
 }
 
 Linphone::Linphone(const Napi::CallbackInfo& info) : Napi::ObjectWrap<Linphone>(info)  {
+}
+
+void Linphone::Register(const Napi::CallbackInfo& info) {
+  LinphoneAddress *from;
+  LinphoneAuthInfo *authinfo;
+  LinphoneProxyConfig* proxy_cfg;
+  const char* server_addr;
+
   Napi::Env env = info.Env();
   Napi::HandleScope scope(env);
 
   int length = info.Length();
 
-  if (length <= 0 || !info[0].IsString()) {
+  /* expect 3 strings as parameters:
+     @param config : string the configuration file path
+     @param identity : string
+     @param password : string
+   */
+  if (length <= 2 || !info[0].IsString() ||
+      !info[1].IsString() ||
+      !info[2].IsString()) {
     Napi::TypeError::New(env, "String expected").ThrowAsJavaScriptException();
   }
-
   std::string config = info[0].As<Napi::String>().Utf8Value();
+  std::string identity = info[1].As<Napi::String>().Utf8Value();
+  std::string password = info[2].As<Napi::String>().Utf8Value();
   //this->value_ = value.String();
    /*
    Fill the LinphoneCoreVTable with application callbacks.
@@ -47,9 +63,44 @@ Linphone::Linphone(const Napi::CallbackInfo& info) : Napi::ObjectWrap<Linphone>(
    Instanciate a LinphoneCore object given the LinphoneCoreVTable
   */
   this->lc_=linphone_core_new(&this->vtable_,config.c_str(),NULL,NULL);
+
+  /*create proxy config*/
+  proxy_cfg = linphone_proxy_config_new();
+
+  /*parse identity*/
+  from = linphone_address_new(identity.c_str());
+  if (from==NULL){
+          printf("%s not a valid sip uri, must be like sip:toto@sip.linphone.org \n",identity.c_str());
+          return;
+  }
+  if (password.length()!=0){
+          authinfo=linphone_auth_info_new(linphone_address_get_username(from),NULL,password.c_str(),NULL,NULL/*,NULL*/); /*create authentication structure from identity*/
+          linphone_core_add_auth_info(this->lc_,authinfo); /*add authentication info to LinphoneCore*/
+  }
+  /* configure proxy entries */
+  linphone_proxy_config_set_identity(proxy_cfg,identity.c_str()); /*set identity with user name and domain*/
+  server_addr = linphone_address_get_domain(from); /*extract domain address from identity*/
+  linphone_proxy_config_set_server_addr(proxy_cfg,server_addr); /* we assume domain = proxy server address*/
+  linphone_proxy_config_enable_register(proxy_cfg,TRUE); /*activate registration for this proxy config*/
+  linphone_address_destroy(from); //DEPRACTED...
+  //... will be replaced by linphone_address_unref(from); /*release resource*/
+  linphone_core_add_proxy_config(this->lc_,proxy_cfg); /*add proxy config to linphone core*/
+  linphone_core_set_default_proxy(this->lc_,proxy_cfg); /*set to default proxy*/
+
 }
 
-Linphone::~Linphone() {
+void Linphone::Unegister(const Napi::CallbackInfo& info) {
+  LinphoneProxyConfig* proxy_cfg;
+  linphone_core_get_default_proxy(this->lc_, &proxy_cfg); // DEPRECATED...
+  //... will be replaced by  proxy_cfg = linphone_core_get_default_proxy_config(lc); /* get default proxy config*/
+  linphone_proxy_config_edit(proxy_cfg); /*start editing proxy configuration*/
+  linphone_proxy_config_enable_register(proxy_cfg,FALSE); /*de-activate registration for this proxy config*/
+  linphone_proxy_config_done(proxy_cfg); /*initiate REGISTER with expire = 0*/
+  while(linphone_proxy_config_get_state(proxy_cfg) !=  LinphoneRegistrationCleared){
+          linphone_core_iterate(this->lc_); /*to make sure we receive call backs before shutting down*/
+          ms_usleep(50000);
+  }
+  /* Finally de-init liblinphone and free its internal structure */
   linphone_core_destroy(this->lc_);
 }
 
