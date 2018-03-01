@@ -46,23 +46,9 @@ void Linphone::Register(const Napi::CallbackInfo& info) {
   std::string config = info[0].As<Napi::String>().Utf8Value();
   std::string identity = info[1].As<Napi::String>().Utf8Value();
   std::string password = info[2].As<Napi::String>().Utf8Value();
-  //this->value_ = value.String();
-   /*
-   Fill the LinphoneCoreVTable with application callbacks.
-   All are optional. Here we only use the call_state_changed callbacks
-   in order to get notifications about the progress of the call.
-   */
-  this->vtable_.call_state_changed=Linphone::CallStateChanged;
-  /*
-   Fill the LinphoneCoreVTable with application callbacks.
-   All are optional. Here we only use the registration_state_changed callbacks
-   in order to get notifications about the progress of the registration.
-   */
-  this->vtable_.registration_state_changed=Linphone::RegistrationStateChanged;
-  /*
-   Instanciate a LinphoneCore object given the LinphoneCoreVTable
-  */
-  this->lc_=linphone_core_new(&this->vtable_,config.c_str(),NULL,NULL);
+
+  /* Init liblinphone */
+  this->Init(config);
 
   /*create proxy config*/
   proxy_cfg = linphone_proxy_config_new();
@@ -82,7 +68,7 @@ void Linphone::Register(const Napi::CallbackInfo& info) {
   server_addr = linphone_address_get_domain(from); /*extract domain address from identity*/
   linphone_proxy_config_set_server_addr(proxy_cfg,server_addr); /* we assume domain = proxy server address*/
   linphone_proxy_config_enable_register(proxy_cfg,TRUE); /*activate registration for this proxy config*/
-  linphone_address_destroy(from); //DEPRACTED...
+  linphone_address_destroy(from); //DEPRECATED...
   //... will be replaced by linphone_address_unref(from); /*release resource*/
   linphone_core_add_proxy_config(this->lc_,proxy_cfg); /*add proxy config to linphone core*/
   linphone_core_set_default_proxy(this->lc_,proxy_cfg); /*set to default proxy*/
@@ -100,12 +86,34 @@ void Linphone::Unegister(const Napi::CallbackInfo& info) {
           linphone_core_iterate(this->lc_); /*to make sure we receive call backs before shutting down*/
           ms_usleep(50000);
   }
-  /* Finally de-init liblinphone and free its internal structure */
-  linphone_core_destroy(this->lc_);
+  this->DeInit();
 }
 
 void Linphone::EnableLog(const Napi::CallbackInfo& info) {
   linphone_core_enable_logs(NULL);
+}
+
+void Linphone::Init(const std::string& config) {
+  /*
+  Fill the LinphoneCoreVTable with application callbacks.
+  All are optional. Here we only use the call_state_changed callbacks
+  in order to get notifications about the progress of the call.
+  */
+ this->vtable_.call_state_changed=Linphone::CallStateChanged;
+ /*
+  Fill the LinphoneCoreVTable with application callbacks.
+  All are optional. Here we only use the registration_state_changed callbacks
+  in order to get notifications about the progress of the registration.
+  */
+ this->vtable_.registration_state_changed=Linphone::RegistrationStateChanged;
+ /*
+  Instanciate a LinphoneCore object given the LinphoneCoreVTable
+ */
+ this->lc_=linphone_core_new(&this->vtable_,config.c_str(),NULL,NULL);
+}
+
+void Linphone::DeInit() {
+  linphone_core_destroy(this->lc_);
 }
 
 Napi::Value Linphone::GetValue(const Napi::CallbackInfo& info) {
